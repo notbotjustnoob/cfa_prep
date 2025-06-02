@@ -135,6 +135,8 @@
         <input type="number" id="work-duration" value="25" min="1" />
         <label for="rest-duration">Rest (minutes):</label>
         <input type="number" id="rest-duration" value="5" min="1" />
+        <label for="cycles">Cycles:</label>
+        <input type="number" id="cycles" value="4" min="1" />
       </div>
       <div class="timer-controls">
         <button id="start-btn">Start</button>
@@ -182,10 +184,13 @@
     let isRunning = false;
     let isWork = true;
     let remainingTime = 0; // in seconds
+    let totalCycles = 0;
+    let currentCycle = 0;
 
     const display = document.getElementById('timer-display');
     const workInput = document.getElementById('work-duration');
     const restInput = document.getElementById('rest-duration');
+    const cyclesInput = document.getElementById('cycles');
     const startBtn = document.getElementById('start-btn');
     const pauseResumeBtn = document.getElementById('pause-resume-btn');
     const resetBtn = document.getElementById('reset-btn');
@@ -197,9 +202,29 @@
     }
 
     function switchSession() {
-      isWork = !isWork;
-      remainingTime = (isWork ? parseInt(workInput.value) : parseInt(restInput.value)) * 60;
+      if (isWork) {
+        // Finished a work session
+        isWork = false;
+        remainingTime = parseInt(restInput.value) * 60;
+      } else {
+        // Finished a rest session, one full cycle completed
+        currentCycle++;
+        if (currentCycle >= totalCycles) {
+          // All cycles complete
+          clearInterval(timerInterval);
+          isRunning = false;
+          alert('All ' + totalCycles + ' cycles complete!');
+          resetState();
+          return;
+        }
+        isWork = true;
+        remainingTime = parseInt(workInput.value) * 60;
+      }
       updateDisplay();
+      timerInterval = setInterval(tick, 1000);
+      pauseResumeBtn.textContent = 'Pause';
+      pauseResumeBtn.disabled = false;
+      resetBtn.disabled = false;
     }
 
     function tick() {
@@ -209,16 +234,33 @@
       } else {
         clearInterval(timerInterval);
         isRunning = false;
-        alert(isWork ? 'Work session complete! Time to rest.' : 'Rest session complete! Time to work.');
+        if (isWork) {
+          alert('Work session complete! Time to rest.');
+        } else {
+          alert('Rest session complete!');
+        }
         switchSession();
         startBtn.disabled = false;
-        pauseResumeBtn.disabled = true;
-        resetBtn.disabled = true;
       }
+    }
+
+    function resetState() {
+      clearInterval(timerInterval);
+      isRunning = false;
+      isWork = true;
+      remainingTime = 0;
+      currentCycle = 0;
+      totalCycles = 0;
+      updateDisplay();
+      startBtn.disabled = false;
+      pauseResumeBtn.disabled = true;
+      resetBtn.disabled = true;
     }
 
     startBtn.addEventListener('click', () => {
       if (!isRunning) {
+        totalCycles = parseInt(cyclesInput.value);
+        currentCycle = 0;
         isWork = true;
         remainingTime = parseInt(workInput.value) * 60;
         updateDisplay();
@@ -243,16 +285,7 @@
       }
     });
 
-    resetBtn.addEventListener('click', () => {
-      clearInterval(timerInterval);
-      isRunning = false;
-      isWork = true;
-      remainingTime = 0;
-      updateDisplay();
-      startBtn.disabled = false;
-      pauseResumeBtn.disabled = true;
-      resetBtn.disabled = true;
-    });
+    resetBtn.addEventListener('click', resetState);
 
     // Music Player Logic
     const toggleMusicBtn = document.getElementById('toggle-music-btn');
